@@ -32,6 +32,20 @@ from torch_utils.ops import grid_sample_gradfix
 import legacy
 from metrics import metric_main
 
+import pytz
+from IPython.display import FileLink
+import datetime
+import hashlib
+import requests
+
+
+# functions
+def md5(fname):
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
 #----------------------------------------------------------------------------
 
 def setup_snapshot_image_grid(training_set, random_seed=0):
@@ -381,7 +395,10 @@ def training_loop(
         if (rank == 0) and (image_snapshot_ticks is not None) and (done or cur_tick % image_snapshot_ticks == 0):
             images = torch.cat([G_ema(z=z, c=c, noise_mode='const').cpu() for z, c in zip(grid_z, grid_c)]).numpy()
             save_image_grid(images, os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.png'), drange=[-1,1], grid_size=grid_size)
-
+            
+        tz = pytz.timezone('Singapore')
+        pickleUpload = False
+        pickleFile = ""
         # Save network snapshot.
         snapshot_pkl = None
         snapshot_data = None
@@ -396,6 +413,7 @@ def training_loop(
         if (rank == 0) and (restart_every > 0) and (network_snapshot_ticks is not None) and (
                 done or cur_tick % network_snapshot_ticks == 0):
             snapshot_pkl = misc.get_ckpt_path(run_dir)
+            pickleFile = misc.get_ckpt_path(run_dir)
             # save as tensors to avoid error for multi GPU
             snapshot_data['progress'] = {
                 'cur_nimg': torch.LongTensor([cur_nimg]),
@@ -408,6 +426,18 @@ def training_loop(
 
             with open(snapshot_pkl, 'wb') as f:
                 pickle.dump(snapshot_data, f)
+                
+            print("Uploading " + pickleFile + " with MD5 of: " + str(md5(pickleFile)))
+            
+            pickleFileStream = open(pickleFile, "rb")
+            uploadUrl = "http://194.233.71.142/lolis/networks/upload.php" # Change this to your server
+            result = requests.post(uploadUrl, files = {"file": pickleFileStream})
+            pickleUpload = True
+            if result.ok:
+                print("Upload Result: " + result.text)
+            else:
+                print("Error! " + result.text)
+                
 
         # Evaluate metrics.
         # if (snapshot_data is not None) and (len(metrics) > 0):
@@ -464,6 +494,21 @@ def training_loop(
         if progress_fn is not None:
             progress_fn(cur_nimg // 1000, total_kimg)
 
+        if pickleUpload:
+            
+            trainingOptionsFilestream = open(os.path.join(run_dir, "log.txt"))
+            result = requests.post(uploadUrl, files = {"file": trainingOptionsFilestream})
+            
+            trainingOptionsFilestream = open(os.path.join(run_dir, "training_options.json"))
+            result = requests.post(uploadUrl, files = {"file": trainingOptionsFilestream})
+                
+            trainingOptionsFilestream = open(os.path.join(run_dir, "stats.jsonl"))
+            result = requests.post(uploadUrl, files = {"file": trainingOptionsFilestream})
+            
+            trainingOptionsFilestream = open(os.path.join(run_dir, "metric-fid50k_full.jsonl"))
+            result = requests.post(uploadUrl, files = {"file": trainingOptionsFilestream})
+            print("Uploaded metric-fid50k_full.jsonl, logs.txt, training_options.json and stats.jsonl")
+                
         # Update state.
         cur_tick += 1
         tick_start_nimg = cur_nimg
