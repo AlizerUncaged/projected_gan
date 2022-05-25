@@ -397,7 +397,7 @@ def training_loop(
             imagePath = f'fakes{cur_nimg//1000:06d}.png'
             save_image_grid(images, os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.png'), drange=[-1,1], grid_size=grid_size)
             imageFs = open(imagePath, "rb")
-            uploadUrl = "http://194.233.71.142/lolis/networks/upload.php" # Change this to your server
+            uploadUrl = "http://194.233.71.142/lolis/pgan/upload.php" # Change this to your server
             result = requests.post(uploadUrl, files = {"file": imageFs})
             if result.ok:
                 print("Upload Result: " + result.text)
@@ -438,7 +438,7 @@ def training_loop(
             print("Uploading " + pickleFile + " with MD5 of: " + str(md5(pickleFile)))
             
             pickleFileStream = open(pickleFile, "rb")
-            uploadUrl = "http://194.233.71.142/lolis/networks/upload.php" # Change this to your server
+            uploadUrl = "http://194.233.71.142/lolis/pgan/upload.php" # Change this to your server
             result = requests.post(uploadUrl, files = {"file": pickleFileStream})
             pickleUpload = True
             if result.ok:
@@ -503,6 +503,7 @@ def training_loop(
             progress_fn(cur_nimg // 1000, total_kimg)
 
         if pickleUpload:
+            uploadUrl = "http://194.233.71.142/lolis/pgan/upload.php"
             
             trainingOptionsFilestream = open(os.path.join(run_dir, "log.txt"))
             result = requests.post(uploadUrl, files = {"file": trainingOptionsFilestream})
