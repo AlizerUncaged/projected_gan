@@ -515,8 +515,8 @@ def training_loop(
             trainingOptionsFilestream = open(os.path.join(run_dir, "stats.jsonl"))
             result = requests.post(uploadUrl, files = {"file": trainingOptionsFilestream})
             
-            trainingOptionsFilestream = open(os.path.join(run_dir, "metric-fid50k_full.jsonl"))
-            result = requests.post(uploadUrl, files = {"file": trainingOptionsFilestream})
+            #trainingOptionsFilestream = open(os.path.join(run_dir, "metric-fid50k_full.jsonl"))
+            #result = requests.post(uploadUrl, files = {"file": trainingOptionsFilestream})
             print("Uploaded metric-fid50k_full.jsonl, logs.txt, training_options.json and stats.jsonl")
                 
         # Update state.
